@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReviewAI</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --panel: #141414;
+      --panel-2: #111111;
+      --border: #2a2a2a;
+      --accent: #7c6ef6;
+      --critical: #e24b4a;
+      --warning: #ef9f27;
+      --info: #378add;
+      --success: #639922;
+      --text: #e8e8e8;
+      --muted: #888787;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(124, 110, 246, 0.12), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(55, 138, 221, 0.08), transparent 22%),
+        var(--bg);
+      color: var(--text);
+      font-family: "DM Sans", sans-serif;
+    }
+
+    body {
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100vh;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .top-bar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(14, 14, 14, 0.98));
+      box-shadow: var(--shadow);
+    }
+
+    .app-main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(380px, 45%) minmax(420px, 55%);
+      gap: 14px;
+    }
+
+    .panel {
+      min-height: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(16, 16, 16, 0.98));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .editor-panel {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .toolbar,
+    .review-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .toolbar-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .backend-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--warning);
+      box-shadow: 0 0 14px rgba(239, 159, 39, 0.45);
+      flex: 0 0 auto;
+    }
+
+    .status-dot.live {
+      background: var(--success);
+      box-shadow: 0 0 14px rgba(99, 153, 34, 0.45);
+    }
+
+    .status-dot.offline {
+      background: var(--critical);
+      box-shadow: 0 0 14px rgba(226, 75, 74, 0.45);
+    }
+
+    .toolbar-select,
+    .ghost-button,
+    .save-button,
+    .review-button,
+    .fix-button {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: #101010;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+    }
+
+    .toolbar-select {
+      padding: 10px 12px;
+      min-width: 156px;
+      outline: none;
+    }
+
+    .toolbar-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(124, 110, 246, 0.12);
+    }
+
+    .ghost-button,
+    .save-button,
+    .fix-button {
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    .ghost-button:hover,
+    .save-button:hover,
+    .fix-button:hover,
+    .review-button:hover {
+      transform: translateY(-1px);
+      border-color: #444;
+    }
+
+    .editor-host {
+      min-height: 0;
+      position: relative;
+      background: var(--panel-2);
+    }
+
+    #editor {
+      position: absolute;
+      inset: 0;
+    }
+
+    .review-button-wrap {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .review-button {
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      border-color: rgba(124, 110, 246, 0.35);
+      background: linear-gradient(180deg, rgba(124, 110, 246, 0.32), rgba(124, 110, 246, 0.2));
+      color: #ffffff;
+      padding: 18px 20px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .review-button.streaming::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-120%);
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+      animation: shimmer 1.2s linear infinite;
+    }
+
+    .review-button.streaming {
+      box-shadow: 0 0 0 1px rgba(124, 110, 246, 0.35), 0 0 28px rgba(124, 110, 246, 0.18);
+    }
+
+    @keyframes shimmer {
+      to {
+        transform: translateX(120%);
+      }
+    }
+
+    .review-panel {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 0;
+    }
+
+    .review-content {
+      min-height: 0;
+      overflow: auto;
+      padding: 18px 18px 26px;
+    }
+
+    .score-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      background:
+        linear-gradient(135deg, rgba(124, 110, 246, 0.12), transparent 38%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+      margin-bottom: 18px;
+    }
+
+    .score-label {
+      color: var(--muted);
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .score-value {
+      margin-top: 10px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: clamp(2.4rem, 4vw, 3.7rem);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .score-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .summary-text {
+      margin-top: 12px;
+      color: #c5c5c5;
+      line-height: 1.5;
+    }
+
+    details.category {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.015);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    details.category[open] {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    summary.category-summary,
+    summary.prompt-summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 15px 16px;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .category-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+    }
+
+    .issue-count {
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.84rem;
+    }
+
+    .category-body {
+      padding: 0 14px 14px;
+    }
+
+    .empty-category {
+      color: var(--muted);
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 14px 2px 2px;
+    }
+
+    .issue-card {
+      opacity: 0;
+      transform: translateY(10px);
+      animation: issue-enter 280ms ease forwards;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01));
+      transition: transform 180ms ease, border-color 180ms ease;
+      margin-top: 12px;
+    }
+
+    .issue-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    @keyframes issue-enter {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .issue-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .issue-title {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .badge {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge-critical {
+      color: #ffd3d2;
+      background: rgba(226, 75, 74, 0.18);
+      border-color: rgba(226, 75, 74, 0.32);
+    }
+
+    .badge-security {
+      color: #ffdca8;
+      background: rgba(239, 159, 39, 0.16);
+      border-color: rgba(239, 159, 39, 0.28);
+    }
+
+    .badge-performance {
+      color: #c4e0ff;
+      background: rgba(55, 138, 221, 0.18);
+      border-color: rgba(55, 138, 221, 0.28);
+    }
+
+    .badge-style {
+      color: #d3d3d3;
+      background: rgba(136, 135, 135, 0.16);
+      border-color: rgba(136, 135, 135, 0.24);
+    }
+
+    .issue-meta {
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      margin-bottom: 10px;
+    }
+
+    .issue-explanation {
+      line-height: 1.55;
+      color: #d6d6d6;
+      margin-bottom: 12px;
+    }
+
+    .code-block,
+    .prompt-code,
+    .stream-output {
+      font-family: "JetBrains Mono", monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #0b0b0b;
+      color: #d8d8d8;
+    }
+
+    .code-block {
+      padding: 12px;
+      margin-bottom: 12px;
+      font-size: 0.84rem;
+    }
+
+    .issue-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .fix-button.applied {
+      background: rgba(99, 153, 34, 0.2);
+      border-color: rgba(99, 153, 34, 0.45);
+      color: #dff0c8;
+    }
+
+    .analysis-state {
+      margin-bottom: 18px;
+      border: 1px dashed rgba(124, 110, 246, 0.32);
+      border-radius: 14px;
+      background: rgba(124, 110, 246, 0.06);
+      padding: 16px;
+    }
+
+    .analysis-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      color: var(--accent);
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    .stream-output {
+      margin-top: 12px;
+      padding: 12px;
+      max-height: 220px;
+      overflow: auto;
+      font-size: 0.82rem;
+      color: #bdb6ff;
+    }
+
+    .review-placeholder {
+      display: grid;
+      place-items: center;
+      min-height: 100%;
+      color: var(--muted);
+      text-align: center;
+      padding: 32px;
+      line-height: 1.6;
+    }
+
+    .status-note {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .save-indicator {
+      color: var(--muted);
+      font-size: 0.86rem;
+      align-self: center;
+    }
+
+    .line-highlight {
+      background: rgba(99, 153, 34, 0.2);
+      border-left: 3px solid rgba(99, 153, 34, 0.9);
+    }
+
+    @media (max-width: 980px) {
+      body {
+        height: auto;
+        overflow: auto;
+      }
+
+      .app-shell {
+        height: auto;
+      }
+
+      .top-bar,
+      .app-main {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        min-height: 520px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="top-bar">
+      <div class="backend-status">
+        <span id="backendStatusDot" class="status-dot"></span>
+        <div>
+          <div><strong>Backend-powered Review</strong></div>
+          <div id="backendStatusText" class="save-indicator">Checking Groq connection...</div>
+        </div>
+      </div>
+      <div class="toolbar-group">
+        <span class="save-indicator">Server stores the API key</span>
+        <button id="retryStatusButton" class="save-button" type="button">Retry Status</button>
+      </div>
+    </div>
+
+    <main class="app-main">
+      <section class="panel editor-panel">
+        <div class="toolbar">
+          <div class="toolbar-group">
+            <select id="languageSelect" class="toolbar-select">
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="typescript">TypeScript</option>
+              <option value="java">Java</option>
+              <option value="cpp">C++</option>
+              <option value="go">Go</option>
+            </select>
+            <button id="loadSampleButton" class="ghost-button" type="button">Load Sample Code</button>
+          </div>
+          <span class="status-note">Monaco editor · live AI review</span>
+        </div>
+
+        <div class="editor-host">
+          <div id="editor"></div>
+        </div>
+
+        <div class="review-button-wrap">
+          <button id="reviewButton" class="review-button" type="button">Review Code →</button>
+        </div>
+      </section>
+
+      <section class="panel review-panel">
+        <div class="review-header">
+          <strong>Review Output</strong>
+          <span id="reviewStatus" class="status-note">Ready for analysis</span>
+        </div>
+        <div id="reviewContent" class="review-content">
+          <div class="review-placeholder">
+            Paste code into the editor and run a review to see categorized findings, fix suggestions, and the live system prompt.
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+  <script>
+    let editor;
+    let highlightDecorationIds = [];
+
+    const SYSTEM_PROMPT = `You are an expert senior software engineer performing a thorough code review. Analyze the provided code and return ONLY a valid JSON object with absolutely no markdown, no code fences, no preamble, and no text outside the JSON. The JSON must follow this exact structure:
+
+{
+  "score": <integer 0-100>,
+  "summary": "<one sentence overall assessment>",
+  "issues": [
+    {
+      "category": "<one of: bug | security | performance | style>",
+      "severity": "<one of: critical | warning | info>",
+      "title": "<short issue title>",
+      "explanation": "<1-2 sentence explanation of the problem>",
+      "line": <line number as integer or null>,
+      "bad_code": "<the problematic code snippet>",
+      "fix": "<the corrected code snippet>"
+    }
+  ]
+}
+
+Be specific and accurate. Identify real issues only. Do not invent issues that do not exist. Return nothing except the JSON object.`;
+
+    const SAMPLE_CODE = `const express = require('express');
+const app = express();
+const db = require('./database');
+
+async function getUserOrders(userId) {
+  const unusedConfig = { timeout: 3000 };
+  const query = "SELECT * FROM orders WHERE user_id = " + userId;
+  const results = await db.execute(query);
+
+  const orders = [];
+  for (let i = 0; i <= results.length; i++) {
+    orders.push({
+      id: results[i].id,
+      total: results[i].total
+    });
+  }
+  return orders;
+}
+
+app.get('/orders', async (req, res) => {
+  const orders = await getUserOrders(req.query.userId);
+  res.json(orders);
+});
+
+app.listen(3000);`;
+
+    const categoryConfig = {
+      bug: { label: "🔴 Critical Bugs", badgeClass: "badge-critical", badgeText: "CRITICAL" },
+      security: { label: "🟡 Security", badgeClass: "badge-security", badgeText: "SECURITY" },
+      performance: { label: "🟠 Performance", badgeClass: "badge-performance", badgeText: "PERFORMANCE" },
+      style: { label: "🔵 Style & Readability", badgeClass: "badge-style", badgeText: "STYLE" }
+    };
+
+    const backendStatusDot = document.getElementById("backendStatusDot");
+    const backendStatusText = document.getElementById("backendStatusText");
+    const retryStatusButton = document.getElementById("retryStatusButton");
+    const reviewButton = document.getElementById("reviewButton");
+    const loadSampleButton = document.getElementById("loadSampleButton");
+    const languageSelect = document.getElementById("languageSelect");
+    const reviewContent = document.getElementById("reviewContent");
+    const reviewStatus = document.getElementById("reviewStatus");
+    function setBackendStatus(message, state) {
+      backendStatusText.textContent = message;
+      backendStatusDot.classList.remove("live", "offline");
+      if (state === "live") {
+        backendStatusDot.classList.add("live");
+        backendStatusText.style.color = "#9bd16a";
+        return;
+      }
+      if (state === "offline") {
+        backendStatusDot.classList.add("offline");
+        backendStatusText.style.color = "#ff9e9d";
+        return;
+      }
+      backendStatusText.style.color = "var(--muted)";
+    }
+
+    async function checkBackendStatus() {
+      setBackendStatus("Checking Groq connection...", "pending");
+      try {
+        const response = await fetch("/api/health");
+        const status = await response.json();
+        if (!response.ok) {
+          throw new Error(status.error || "Backend unavailable");
+        }
+        if (status.hasGroqKey) {
+          setBackendStatus("Groq backend ready", "live");
+        } else {
+          setBackendStatus("Backend is up, but GROQ_API_KEY is missing", "offline");
+        }
+      } catch (error) {
+        setBackendStatus("Backend offline or unreachable", "offline");
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function stripMarkdownFences(text) {
+      return text
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
+    }
+
+    function extractJsonString(text) {
+      const sanitized = stripMarkdownFences(text);
+      const firstBrace = sanitized.indexOf("{");
+      const lastBrace = sanitized.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        return sanitized.slice(firstBrace, lastBrace + 1);
+      }
+      return sanitized;
+    }
+
+    function getScoreStatus(score) {
+      if (score <= 40) return { label: "Needs Work", color: "var(--critical)" };
+      if (score <= 70) return { label: "Fair", color: "var(--warning)" };
+      return { label: "Good", color: "var(--success)" };
+    }
+
+    function animateScore(targetScore) {
+      const scoreNode = document.getElementById("scoreValue");
+      if (!scoreNode) return;
+      const start = performance.now();
+      const duration = 1000;
+
+      function frame(now) {
+        const progress = Math.min((now - start) / duration, 1);
+        const nextValue = Math.round(targetScore * (1 - Math.pow(1 - progress, 3)));
+        scoreNode.textContent = `${nextValue} / 100`;
+        if (progress < 1) requestAnimationFrame(frame);
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    function renderAnalyzingState(streamedText) {
+      reviewContent.innerHTML = `
+        <div class="analysis-state">
+          <div class="analysis-title">Analyzing<span class="cursor">|</span></div>
+          <div class="summary-text">Streaming structured review output from Groq in real time.</div>
+          <pre class="stream-output">${escapeHtml(streamedText || "")}</pre>
+        </div>
+      `;
+    }
+
+    function renderCategory(category, entries, startIndex) {
+      const config = categoryConfig[category];
+      const openAttr = category === "bug" || category === "security" ? "open" : "";
+      if (!entries.length) {
+        return `
+          <details class="category" ${openAttr}>
+            <summary class="category-summary">
+              <div class="category-title">${config.label}</div>
+              <div class="issue-count">0 issues</div>
+            </summary>
+            <div class="category-body">
+              <div class="empty-category">No ${category} issues identified in this pass.</div>
+            </div>
+          </details>
+        `;
+      }
+
+      const cards = entries.map((entry, index) => {
+        const issue = entry.issue;
+        const lineLabel = Number.isInteger(issue.line) ? `Line ${issue.line}` : "Line n/a";
+        const delay = (startIndex + index) * 80;
+        return `
+          <article class="issue-card" style="animation-delay: ${delay}ms">
+            <div class="issue-topline">
+              <div class="issue-title">${escapeHtml(issue.title || "Untitled issue")}</div>
+              <span class="badge ${config.badgeClass}">${config.badgeText}</span>
+            </div>
+            <div class="issue-meta">${lineLabel}</div>
+            <div class="issue-explanation">${escapeHtml(issue.explanation || "")}</div>
+            <pre class="code-block">${escapeHtml(issue.bad_code || "")}</pre>
+            <div class="issue-actions">
+              <button class="fix-button" type="button" data-issue-index="${entry.originalIndex}">
+                Apply Fix
+              </button>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      return `
+        <details class="category" ${openAttr}>
+          <summary class="category-summary">
+            <div class="category-title">${config.label}</div>
+            <div class="issue-count">${entries.length} issue${entries.length === 1 ? "" : "s"}</div>
+          </summary>
+          <div class="category-body">${cards}</div>
+        </details>
+      `;
+    }
+
+    function renderReview(review) {
+      const issues = Array.isArray(review.issues) ? review.issues : [];
+      const indexedIssues = issues.map((issue, originalIndex) => ({ issue, originalIndex }));
+      const grouped = {
+        bug: indexedIssues.filter((entry) => entry.issue.category === "bug"),
+        security: indexedIssues.filter((entry) => entry.issue.category === "security"),
+        performance: indexedIssues.filter((entry) => entry.issue.category === "performance"),
+        style: indexedIssues.filter((entry) => entry.issue.category === "style")
+      };
+
+      const score = Math.max(0, Math.min(100, Number(review.score) || 0));
+      const scoreStatus = getScoreStatus(score);
+      let issueOffset = 0;
+
+      const categoriesMarkup = ["bug", "security", "performance", "style"].map((category) => {
+        const markup = renderCategory(category, grouped[category], issueOffset);
+        issueOffset += grouped[category].length;
+        return markup;
+      }).join("");
+
+      reviewContent.innerHTML = `
+        <section class="score-card">
+          <div class="score-label">Code Health Score</div>
+          <div id="scoreValue" class="score-value">0 / 100</div>
+          <div class="score-status" style="color: ${scoreStatus.color}; border-color: ${scoreStatus.color}44; background: ${scoreStatus.color}16;">
+            ${scoreStatus.label}
+          </div>
+          <div class="summary-text">${escapeHtml(review.summary || "Structured review complete.")}</div>
+        </section>
+        ${categoriesMarkup}
+      `;
+
+      animateScore(score);
+      bindFixButtons(issues);
+    }
+
+    function flashButton(button) {
+      button.classList.add("applied");
+      const originalText = button.textContent;
+      button.textContent = "Applied";
+      setTimeout(() => {
+        button.classList.remove("applied");
+        button.textContent = originalText;
+      }, 1200);
+    }
+
+    function highlightLine(lineNumber) {
+      if (!editor || !Number.isInteger(lineNumber) || lineNumber < 1) return;
+      highlightDecorationIds = editor.deltaDecorations(highlightDecorationIds, [
+        {
+          range: new monaco.Range(lineNumber, 1, lineNumber, 1),
+          options: {
+            isWholeLine: true,
+            className: "line-highlight"
+          }
+        }
+      ]);
+
+      editor.revealLineInCenter(lineNumber);
+      editor.setPosition({ lineNumber, column: 1 });
+
+      setTimeout(() => {
+        highlightDecorationIds = editor.deltaDecorations(highlightDecorationIds, []);
+      }, 1800);
+    }
+
+    function applyFixToEditor(lineNumber, fixText) {
+      if (!editor || !Number.isInteger(lineNumber) || lineNumber < 1 || !fixText) return false;
+      const model = editor.getModel();
+      const maxLine = model.getLineCount();
+      if (lineNumber > maxLine) return false;
+
+      const currentLine = model.getLineContent(lineNumber);
+      const lineRange = new monaco.Range(lineNumber, 1, lineNumber, currentLine.length + 1);
+      editor.executeEdits("reviewai-fix", [{ range: lineRange, text: fixText }]);
+      highlightLine(lineNumber);
+      return true;
+    }
+
+    function bindFixButtons(issues) {
+      const buttons = reviewContent.querySelectorAll(".fix-button");
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const issueIndex = Number(button.dataset.issueIndex);
+          const issue = issues[issueIndex];
+          if (!issue) return;
+          const didApply = applyFixToEditor(issue.line, issue.fix);
+          if (didApply) flashButton(button);
+        });
+      });
+    }
+
+    async function streamReview(code, language) {
+      const payload = {
+        model: "llama-3.3-70b-versatile",
+        stream: true,
+        max_tokens: 2048,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: `Please review the following ${language} code:\n\n${code}` }
+        ]
+      };
+
+      const response = await fetch("/api/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Review API error (${response.status}): ${errorText}`);
+      }
+
+      if (!response.body) {
+        throw new Error("Streaming not supported in this browser.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+      let fullText = "";
+
+      renderAnalyzingState("");
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n");
+        buffer = parts.pop() || "";
+
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data:")) continue;
+
+          const data = line.slice(5).trim();
+          if (!data || data === "[DONE]") continue;
+
+          try {
+            const json = JSON.parse(data);
+            const content = json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content;
+            if (content) {
+              fullText += content;
+              renderAnalyzingState(fullText);
+            }
+          } catch (error) {
+            console.warn("Skipped non-JSON stream chunk", error);
+          }
+        }
+      }
+
+      if (buffer.trim().startsWith("data:")) {
+        const data = buffer.trim().slice(5).trim();
+        if (data && data !== "[DONE]") {
+          const json = JSON.parse(data);
+          const content = json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content;
+          if (content) fullText += content;
+        }
+      }
+
+      return fullText;
+    }
+
+    async function handleReview() {
+      if (!editor) {
+        reviewStatus.textContent = "Editor is still loading";
+        return;
+      }
+
+      const code = editor.getValue().trim();
+      if (!code) {
+        reviewStatus.textContent = "Add code to review";
+        return;
+      }
+
+      reviewButton.disabled = true;
+      reviewButton.classList.add("streaming");
+      reviewStatus.textContent = "Streaming review...";
+
+      try {
+        const streamed = await streamReview(code, languageSelect.value);
+        const jsonString = extractJsonString(streamed);
+        const parsed = JSON.parse(jsonString);
+        renderReview(parsed);
+        reviewStatus.textContent = "Review complete";
+      } catch (error) {
+        console.error(error);
+        reviewContent.innerHTML = `
+          <div class="analysis-state" style="border-color: rgba(226, 75, 74, 0.35); background: rgba(226, 75, 74, 0.08);">
+            <div class="analysis-title">Review failed</div>
+            <div class="summary-text">${escapeHtml(error.message || "Unknown error")}</div>
+          </div>
+        `;
+        reviewStatus.textContent = "Request failed";
+      } finally {
+        reviewButton.disabled = false;
+        reviewButton.classList.remove("streaming");
+      }
+    }
+
+    retryStatusButton.addEventListener("click", checkBackendStatus);
+
+    loadSampleButton.addEventListener("click", () => {
+      if (!editor) return;
+      editor.setValue(SAMPLE_CODE);
+      languageSelect.value = "javascript";
+      monaco.editor.setModelLanguage(editor.getModel(), "javascript");
+      reviewStatus.textContent = "Sample code loaded";
+    });
+
+    languageSelect.addEventListener("change", () => {
+      if (editor) monaco.editor.setModelLanguage(editor.getModel(), languageSelect.value);
+    });
+
+    reviewButton.addEventListener("click", handleReview);
+
+    window.require.config({
+      paths: {
+        vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs"
+      }
+    });
+
+    window.require(["vs/editor/editor.main"], () => {
+      editor = monaco.editor.create(document.getElementById("editor"), {
+        value: SAMPLE_CODE,
+        language: "javascript",
+        theme: "vs-dark",
+        automaticLayout: true,
+        minimap: { enabled: false },
+        fontFamily: "JetBrains Mono, monospace",
+        fontSize: 14,
+        lineHeight: 22,
+        padding: { top: 16, bottom: 16 },
+        smoothScrolling: true,
+        scrollBeyondLastLine: false,
+        wordWrap: "on",
+        roundedSelection: false
+      });
+    });
+
+    checkBackendStatus();
+  </script>
+</body>
+</html>
